@@ -84,6 +84,14 @@ const commands = {
   },
 };
 
+async function createPrettierStatusBarItem(context: vscode.ExtensionContext) {
+	const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+	context.subscriptions.push(statusBarItem);
+	statusBarItem.show();
+	statusBarItem.text = "Prettier'o'meter: 💅";
+	statusBarItem.tooltip = "Prettier'o'meter: 💅";
+}
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -95,6 +103,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Now provide the implementation of the command with registerCommand
   // The commandId parameter must match the command field in package.json
 
+	// Register Commands
   const commandKeys = Object.keys(commands);
   commandKeys.forEach((commandKey) => {
     // TODO: What is a disposable?
@@ -106,6 +115,7 @@ export function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(disposable);
   });
 
+	createPrettierStatusBarItem(context);
 }
 
 // this method is called when your extension is deactivated
