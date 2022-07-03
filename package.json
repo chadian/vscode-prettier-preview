@@ -17,6 +17,7 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"comment": "// TODO: It would be good to have sensible shortcuts applied to commands, too",
 		"commands": [
 			{
 				"command": "prettier-preview.showPreview",
