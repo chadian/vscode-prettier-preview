@@ -88,8 +88,23 @@ async function createPrettierStatusBarItem(context: vscode.ExtensionContext) {
 	const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 	context.subscriptions.push(statusBarItem);
 	statusBarItem.show();
-	statusBarItem.text = "Prettier'o'meter: 💅";
-	statusBarItem.tooltip = "Prettier'o'meter: 💅";
+
+	function updateStatusText(diffLines: number, totalLines: number) {
+		const percent = 100 - Math.round((diffLines / totalLines) * 100);
+
+		const fifths = Math.round(percent / 20);
+		const meter = Array(fifths).fill('💅', 0, fifths).join('');
+
+
+		return `Prettier'o'meter: ${meter}`;
+	}
+
+	statusBarItem.text = updateStatusText(60, 100);
+	statusBarItem.tooltip = "Shows your current prettier rating";
+
+	return {
+		update: updateStatusText,
+	};
 }
 
 // this method is called when your extension is activated
@@ -114,6 +129,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		context.subscriptions.push(disposable);
   });
+
 
 	createPrettierStatusBarItem(context);
 }
