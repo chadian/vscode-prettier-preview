@@ -7,6 +7,8 @@ import { tmpdir } from "os";
 import { resolve } from "path";
 import { diffLines } from "diff";
 
+const outputChannel = vscode.window.createOutputChannel('prettier-preview');
+
 /*
 	prettierFormat and openCodeDocument could be setup
 	to use the same language as specified from the editor.
@@ -24,7 +26,17 @@ function prettierFormat(content: string) {
 function getPrettierActiveContent() {
   const content = getActiveFileContents();
   if (content) {
-    return prettierFormat(content);
+		try {
+    	return prettierFormat(content);
+		} catch (e) {
+			vscode.window.showInformationMessage(
+        "Could not run prettier on content, see the Output tab for more details"
+      );
+
+			outputChannel.show();
+			outputChannel.appendLine('Could not run prettier on content, got error:');
+			outputChannel.appendLine((e as any).toString());
+		}
   }
 }
 
