@@ -2,7 +2,9 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import * as prettier from "prettier";
-import { readFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { resolve } from "path";
 
 /*
 	prettierFormat and openCodeDocument could be setup
@@ -17,18 +19,34 @@ function prettierFormat(fileName: string) {
   // from a prettier project config file if it doesn't do/check
   // this automatically.
   const formatted = prettier.format(activeContents);
-	return formatted;
+  return formatted;
 }
 
 async function openCodeDocument(content: string) {
-    const document = await vscode.workspace.openTextDocument({
-        language: 'javascript',
-        content,
-    });
+  const document = await vscode.workspace.openTextDocument({
+    language: "javascript",
+    content,
+  });
 
-    vscode.window.showTextDocument(document, {
-			viewColumn: vscode.ViewColumn.Beside
-		});
+  vscode.window.showTextDocument(document, {
+    viewColumn: vscode.ViewColumn.Beside,
+  });
+}
+
+async function openDiff(left: string, prettierFormatted: string) {
+  // TODO: Can this be kept in memory for the vscode diff instead
+  // of writing to disk?
+  const tmpFile = resolve(tmpdir(), new Date().toString());
+  writeFileSync(tmpFile, prettierFormatted);
+
+  const right = tmpFile;
+  // TODO: Use title of filename instead of entire path;
+  vscode.commands.executeCommand(
+    "vscode.diff",
+    vscode.Uri.file(left),
+    vscode.Uri.file(right),
+    `Prettier formatting for ${left}`
+  );
 }
 
 // this method is called when your extension is activated
@@ -54,8 +72,10 @@ export function activate(context: vscode.ExtensionContext) {
       console.log(`the active file name is ${activeFileName}`);
 
       if (activeFileName) {
-				const formatted = prettierFormat(activeFileName);
-				await openCodeDocument(formatted);
+        const formatted = prettierFormat(activeFileName);
+        // await openCodeDocument(formatted);
+
+        await openDiff(activeFileName, formatted);
       }
     }
   );
