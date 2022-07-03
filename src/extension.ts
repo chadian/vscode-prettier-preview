@@ -30,9 +30,12 @@ function getPrettierActiveContent() {
     	return prettierFormat(content);
 		} catch (e) {
 			vscode.window.showInformationMessage(
-        "Could not run prettier on content, see the Output tab for more details"
-      );
+				"Could not run prettier on content, see the Output tab for more details"
+				);
 
+			// TODO: Might not be the best place to put this, check the developer ux
+			// recommendations vscode for this type of output. Maybe Debug Console or
+			// Problems tab would be a better spot
 			outputChannel.show();
 			outputChannel.appendLine('Could not run prettier on content, got error:');
 			outputChannel.appendLine((e as any).toString());
@@ -139,7 +142,9 @@ async function createPrettierStatusBarItem(context: vscode.ExtensionContext) {
   function updateStatusText(diffLines: number, totalLines: number) {
     const percent = 100 - Math.round((diffLines / totalLines) * 100);
 
-    const fifths = Math.round(percent / 20);
+		// `floor` is more conservative, so things don't get round up to 100
+		// unless they are actually perfect
+    const fifths = Math.floor(percent / 20);
     const meter = Array(fifths).fill("💅", 0, fifths).join("");
     console.log({ diffLines, totalLines, percent, fifths, meter });
 
@@ -165,7 +170,7 @@ function handleEditorTextChange(updaters: { updateStatusBar: any }) {
 		// otherwise unchanged lines will still show up in diff
     const diff = diffLines(activeFileContents, prettierFormatted, {
       ignoreWhitespace: false,
-      newlineIsToken: false,
+      newlineIsToken: true,
     }).filter(({ added, removed }) => added || removed);
 
 
