@@ -10,8 +10,10 @@
 		"Other"
 	],
 	"activationEvents": [
+		"onStartupFinished",
 		"onCommand:prettier-preview.showPreview",
-		"onCommand:prettier-preview.showDiff"
+		"onCommand:prettier-preview.showDiff",
+		"onCommand:prettier-preview.copyToClipboard"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -23,6 +25,10 @@
 			{
 				"command": "prettier-preview.showDiff",
 				"title": "Show Prettier Diff"
+			},
+			{
+				"command": "prettier-preview.copyToClipboard",
+				"title": "Copy Prettier Content to Clipboard"
 			}
 		]
 	},

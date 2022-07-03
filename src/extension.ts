@@ -2,9 +2,10 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import * as prettier from "prettier";
-import { readFileSync, writeFileSync } from "fs";
+import { writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { resolve } from "path";
+import { diffLines } from "diff";
 
 /*
 	prettierFormat and openCodeDocument could be setup
@@ -12,14 +13,19 @@ import { resolve } from "path";
 	For now, assuming js.
 */
 
-function prettierFormat(fileName: string) {
-  const activeContents = readFileSync(fileName).toString();
-
+function prettierFormat(content: string) {
   // TODO: Prettier supports config, this would be nice to pull
   // from a prettier project config file if it doesn't do/check
   // this automatically.
-  const formatted = prettier.format(activeContents);
+  const formatted = prettier.format(content);
   return formatted;
+}
+
+function getPrettierActiveContent() {
+	const content = getActiveFileContents();
+	if (content) {
+		return prettierFormat(content);
+	}
 }
 
 async function openCodeDocument(content: string) {
@@ -33,20 +39,41 @@ async function openCodeDocument(content: string) {
   });
 }
 
-async function openDiff(left: string, prettierFormatted: string) {
+async function openDiff(prettierFormattedContent: string) {
   // TODO: Can this be kept in memory for the vscode diff instead
   // of writing to disk?
-  const tmpFile = resolve(tmpdir(), new Date().toString());
-  writeFileSync(tmpFile, prettierFormatted);
+  // TODO: Use better method random temp filename
 
-  const right = tmpFile;
-  // TODO: Use title of filename instead of entire path;
-  vscode.commands.executeCommand(
-    "vscode.diff",
-    vscode.Uri.file(left),
-    vscode.Uri.file(right),
-    `Prettier formatting for ${left}`
-  );
+  const activeFileContent = getActiveFileContents();
+  if (activeFileContent) {
+    const leftFile = resolve(
+      tmpdir(),
+      `prettier-preview-left-${new Date().getTime()}`
+    );
+    writeFileSync(leftFile, activeFileContent);
+
+    const rightFile = resolve(
+      tmpdir(),
+      `prettier-preview-right-${new Date().getTime()}`
+    );
+    writeFileSync(rightFile, prettierFormattedContent);
+
+    // TODO: Use title of filename instead of entire path;
+    vscode.commands.executeCommand(
+      "vscode.diff",
+      vscode.Uri.file(leftFile),
+      vscode.Uri.file(rightFile),
+      `Prettier formatting for ${vscode.window.activeTextEditor?.document.fileName}`
+    );
+  }
+}
+
+function getActiveFileContents() {
+  const activeEditor: vscode.TextEditor | undefined =
+    vscode.window.activeTextEditor;
+  const activeFileContents = activeEditor?.document?.getText();
+
+  return activeFileContents;
 }
 
 // extract common things between show* into utilities
@@ -55,14 +82,11 @@ const commands = {
     // The code you place here will be executed every time your command is executed
     // Display a message box to the user
     vscode.window.showInformationMessage("Prettier output generated");
+    const activeFileContents = getActiveFileContents();
+    console.log(`the active file name is ${activeFileContents}`);
 
-    const activeEditor: vscode.TextEditor | undefined =
-      vscode.window.activeTextEditor;
-    const activeFileName = activeEditor?.document?.fileName;
-    console.log(`the active file name is ${activeFileName}`);
-
-    if (activeFileName) {
-      const formatted = prettierFormat(activeFileName);
+		const formatted = getPrettierActiveContent();
+    if (formatted) {
       await openCodeDocument(formatted);
     }
   },
@@ -70,46 +94,67 @@ const commands = {
   "prettier-preview.showDiff": async () => {
     // The code you place here will be executed every time your command is executed
     // Display a message box to the user
-    vscode.window.showInformationMessage("Prettier output generated");
+		const formatted = getPrettierActiveContent();
 
-    const activeEditor: vscode.TextEditor | undefined =
-      vscode.window.activeTextEditor;
-    const activeFileName = activeEditor?.document?.fileName;
-    console.log(`the active file name is ${activeFileName}`);
-
-    if (activeFileName) {
-      const formatted = prettierFormat(activeFileName);
-      await openDiff(activeFileName, formatted);
+    if (formatted) {
+      await openDiff(formatted);
     }
+  },
+
+	"prettier-preview.copyToClipboard": async () => {
+		const content = getPrettierActiveContent();
+		if (content) {
+			vscode.env.clipboard.writeText(content);
+			vscode.window.showInformationMessage("Prettier output copied to clipboard");
+		} else {
+			vscode.window.showInformationMessage("Could not determine active tab to prettier copy");
+		}
   },
 };
 
 async function createPrettierStatusBarItem(context: vscode.ExtensionContext) {
-	const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-	context.subscriptions.push(statusBarItem);
-	statusBarItem.show();
+  const statusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Right,
+    100
+  );
+  context.subscriptions.push(statusBarItem);
+  statusBarItem.show();
 
-	function updateStatusText(diffLines: number, totalLines: number) {
-		const percent = 100 - Math.round((diffLines / totalLines) * 100);
+  function updateStatusText(diffLines: number, totalLines: number) {
+    const percent = 100 - Math.round((diffLines / totalLines) * 100);
 
-		const fifths = Math.round(percent / 20);
-		const meter = Array(fifths).fill('💅', 0, fifths).join('');
+    const fifths = Math.round(percent / 20);
+    const meter = Array(fifths).fill("💅", 0, fifths).join("");
+    console.log({ diffLines, totalLines, percent, fifths, meter });
 
+    statusBarItem.text = `Prettier'o'meter: ${meter}`;
+  }
 
-		return `Prettier'o'meter: ${meter}`;
-	}
+  // set default
+  updateStatusText(100, 100);
+  statusBarItem.tooltip = "Shows your current prettier rating";
 
-	statusBarItem.text = updateStatusText(60, 100);
-	statusBarItem.tooltip = "Shows your current prettier rating";
+  return {
+    update: updateStatusText,
+  };
+}
 
-	return {
-		update: updateStatusText,
-	};
+function handleEditorTextChange(updaters: { updateStatusBar: any }) {
+  const activeFileContents = getActiveFileContents();
+  let prettierFormatted;
+  if (activeFileContents) {
+    prettierFormatted = prettierFormat(activeFileContents);
+    const diff = diffLines(activeFileContents, prettierFormatted);
+    const totalDiffLines = diff.length;
+    const totalLines = activeFileContents.split("\n").length;
+    console.log(totalDiffLines, totalLines);
+    updaters.updateStatusBar(totalDiffLines, totalLines);
+  }
 }
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log('Congratulations, "prettier-preview" is now active!');
@@ -118,7 +163,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Now provide the implementation of the command with registerCommand
   // The commandId parameter must match the command field in package.json
 
-	// Register Commands
+  // Register Commands
   const commandKeys = Object.keys(commands);
   commandKeys.forEach((commandKey) => {
     // TODO: What is a disposable?
@@ -127,11 +172,21 @@ export function activate(context: vscode.ExtensionContext) {
       (commands as any)[commandKey]
     );
 
-		context.subscriptions.push(disposable);
+    context.subscriptions.push(disposable);
   });
 
+  const { update: updateStatusBar } = await createPrettierStatusBarItem(
+    context
+  );
 
-	createPrettierStatusBarItem(context);
+  // need both of these to keep updated changes in the editor
+  // TODO: Use debounce
+  vscode.window.onDidChangeTextEditorSelection(() =>
+    handleEditorTextChange({ updateStatusBar })
+  );
+  vscode.window.onDidChangeActiveTextEditor(() =>
+    handleEditorTextChange({ updateStatusBar })
+  );
 }
 
 // this method is called when your extension is deactivated
