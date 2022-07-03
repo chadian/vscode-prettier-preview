@@ -10,6 +10,11 @@ For example if there is an image subfolder under your extension project workspac
 
 \!\[feature X\]\(images/feature-x.png\)
 
+* See diff of content against prettier formatting
+* Open new editor with prettier formatted content
+* Copy prettier content to clipboard
+* See a live results in the status bar of how pretty your current editor is with the Prettier'o'meter
+
 > Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
 
 ## Requirements
