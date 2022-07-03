@@ -26,7 +26,9 @@ async function openCodeDocument(content: string) {
         content,
     });
 
-    vscode.window.showTextDocument(document);
+    vscode.window.showTextDocument(document, {
+			viewColumn: vscode.ViewColumn.Beside
+		});
 }
 
 // this method is called when your extension is activated
