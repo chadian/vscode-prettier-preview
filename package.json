@@ -10,7 +10,8 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:prettier-preview.showPreview"
+		"onCommand:prettier-preview.showPreview",
+		"onCommand:prettier-preview.showDiff"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -18,6 +19,10 @@
 			{
 				"command": "prettier-preview.showPreview",
 				"title": "Show Prettier Preview"
+			},
+			{
+				"command": "prettier-preview.showDiff",
+				"title": "Show Prettier Diff"
 			}
 		]
 	},

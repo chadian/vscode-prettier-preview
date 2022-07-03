@@ -49,6 +49,41 @@ async function openDiff(left: string, prettierFormatted: string) {
   );
 }
 
+// extract common things between show* into utilities
+const commands = {
+  "prettier-preview.showPreview": async () => {
+    // The code you place here will be executed every time your command is executed
+    // Display a message box to the user
+    vscode.window.showInformationMessage("Prettier output generated");
+
+    const activeEditor: vscode.TextEditor | undefined =
+      vscode.window.activeTextEditor;
+    const activeFileName = activeEditor?.document?.fileName;
+    console.log(`the active file name is ${activeFileName}`);
+
+    if (activeFileName) {
+      const formatted = prettierFormat(activeFileName);
+      await openCodeDocument(formatted);
+    }
+  },
+
+  "prettier-preview.showDiff": async () => {
+    // The code you place here will be executed every time your command is executed
+    // Display a message box to the user
+    vscode.window.showInformationMessage("Prettier output generated");
+
+    const activeEditor: vscode.TextEditor | undefined =
+      vscode.window.activeTextEditor;
+    const activeFileName = activeEditor?.document?.fileName;
+    console.log(`the active file name is ${activeFileName}`);
+
+    if (activeFileName) {
+      const formatted = prettierFormat(activeFileName);
+      await openDiff(activeFileName, formatted);
+    }
+  },
+};
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -59,28 +94,18 @@ export function activate(context: vscode.ExtensionContext) {
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand
   // The commandId parameter must match the command field in package.json
-  let disposable = vscode.commands.registerCommand(
-    "prettier-preview.showPreview",
-    async () => {
-      // The code you place here will be executed every time your command is executed
-      // Display a message box to the user
-      vscode.window.showInformationMessage("Prettier output generated");
 
-      const activeEditor: vscode.TextEditor | undefined =
-        vscode.window.activeTextEditor;
-      const activeFileName = activeEditor?.document?.fileName;
-      console.log(`the active file name is ${activeFileName}`);
+  const commandKeys = Object.keys(commands);
+  commandKeys.forEach((commandKey) => {
+    // TODO: What is a disposable?
+    let disposable = vscode.commands.registerCommand(
+      commandKey,
+      (commands as any)[commandKey]
+    );
 
-      if (activeFileName) {
-        const formatted = prettierFormat(activeFileName);
-        // await openCodeDocument(formatted);
+		context.subscriptions.push(disposable);
+  });
 
-        await openDiff(activeFileName, formatted);
-      }
-    }
-  );
-
-  context.subscriptions.push(disposable);
 }
 
 // this method is called when your extension is deactivated
