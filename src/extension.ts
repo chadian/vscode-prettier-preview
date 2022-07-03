@@ -22,10 +22,10 @@ function prettierFormat(content: string) {
 }
 
 function getPrettierActiveContent() {
-	const content = getActiveFileContents();
-	if (content) {
-		return prettierFormat(content);
-	}
+  const content = getActiveFileContents();
+  if (content) {
+    return prettierFormat(content);
+  }
 }
 
 async function openCodeDocument(content: string) {
@@ -85,7 +85,7 @@ const commands = {
     const activeFileContents = getActiveFileContents();
     console.log(`the active file name is ${activeFileContents}`);
 
-		const formatted = getPrettierActiveContent();
+    const formatted = getPrettierActiveContent();
     if (formatted) {
       await openCodeDocument(formatted);
     }
@@ -94,21 +94,25 @@ const commands = {
   "prettier-preview.showDiff": async () => {
     // The code you place here will be executed every time your command is executed
     // Display a message box to the user
-		const formatted = getPrettierActiveContent();
+    const formatted = getPrettierActiveContent();
 
     if (formatted) {
       await openDiff(formatted);
     }
   },
 
-	"prettier-preview.copyToClipboard": async () => {
-		const content = getPrettierActiveContent();
-		if (content) {
-			vscode.env.clipboard.writeText(content);
-			vscode.window.showInformationMessage("Prettier output copied to clipboard");
-		} else {
-			vscode.window.showInformationMessage("Could not determine active tab to prettier copy");
-		}
+  "prettier-preview.copyToClipboard": async () => {
+    const content = getPrettierActiveContent();
+    if (content) {
+      vscode.env.clipboard.writeText(content);
+      vscode.window.showInformationMessage(
+        "Prettier output copied to clipboard"
+      );
+    } else {
+      vscode.window.showInformationMessage(
+        "Could not determine active tab to prettier copy"
+      );
+    }
   },
 };
 
@@ -144,10 +148,18 @@ function handleEditorTextChange(updaters: { updateStatusBar: any }) {
   let prettierFormatted;
   if (activeFileContents) {
     prettierFormatted = prettierFormat(activeFileContents);
-    const diff = diffLines(activeFileContents, prettierFormatted);
+
+		// filter is required: https://github.com/kpdecker/jsdiff/issues/271
+		// otherwise unchanged lines will still show up in diff
+    const diff = diffLines(activeFileContents, prettierFormatted, {
+      ignoreWhitespace: false,
+      newlineIsToken: false,
+    }).filter(({ added, removed }) => added || removed);
+
+
     const totalDiffLines = diff.length;
     const totalLines = activeFileContents.split("\n").length;
-    console.log(totalDiffLines, totalLines);
+    console.log({ activeFileContents, prettierFormatted, diff });
     updaters.updateStatusBar(totalDiffLines, totalLines);
   }
 }
@@ -181,6 +193,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // need both of these to keep updated changes in the editor
   // TODO: Use debounce
+  // TODO: Would be nice to have configurable to be on save or as typing
   vscode.window.onDidChangeTextEditorSelection(() =>
     handleEditorTextChange({ updateStatusBar })
   );
